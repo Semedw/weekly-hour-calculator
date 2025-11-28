@@ -9,8 +9,8 @@ interface WheelTimePickerProps {
 }
 
 const WheelTimePicker: React.FC<WheelTimePickerProps> = ({ id, value, onChange, label }) => {
-  const [hour, setHour] = useState('09');
-  const [minute, setMinute] = useState('00');
+  const [hour, setHour] = useState('');
+  const [minute, setMinute] = useState('');
   const [period, setPeriod] = useState<'AM' | 'PM'>('AM');
 
   useEffect(() => {
@@ -32,10 +32,15 @@ const WheelTimePicker: React.FC<WheelTimePickerProps> = ({ id, value, onChange, 
         setHour((hourNum - 12).toString().padStart(2, '0'));
         setPeriod('PM');
       }
+    } else {
+      setHour('');
+      setMinute('');
     }
   }, [value]);
 
   const handleTimeChange = (newHour: string, newMinute: string, newPeriod: 'AM' | 'PM') => {
+    if (!newHour || !newMinute) return;
+    
     let hour24 = parseInt(newHour, 10);
     
     if (newPeriod === 'AM') {
@@ -79,6 +84,7 @@ const WheelTimePicker: React.FC<WheelTimePickerProps> = ({ id, value, onChange, 
           className={styles.timeInput}
           style={{ flex: 1 }}
         >
+          <option value="">--</option>
           {hours.map(h => (
             <option key={h} value={h}>{h}</option>
           ))}
@@ -89,6 +95,7 @@ const WheelTimePicker: React.FC<WheelTimePickerProps> = ({ id, value, onChange, 
           className={styles.timeInput}
           style={{ flex: 1 }}
         >
+          <option value="">--</option>
           {minutes.map(m => (
             <option key={m} value={m}>{m}</option>
           ))}
