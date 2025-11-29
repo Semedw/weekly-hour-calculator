@@ -17,6 +17,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from django.http import JsonResponse
+from django.db import connection
 
 def home(request):
     return JsonResponse({
@@ -25,11 +26,36 @@ def home(request):
         'endpoints': {
             'api': '/api/',
             'admin': '/admin/',
+            'health': '/health/',
         }
     })
 
+def health_check(request):
+    """Check database connection and migrations"""
+    try:
+        # Check database connection
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+        
+        # Check if tables exist
+        from django.contrib.auth.models import User
+        user_count = User.objects.count()
+        
+        return JsonResponse({
+            'status': 'healthy',
+            'database': 'connected',
+            'users': user_count,
+        })
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'error': str(e),
+            'message': 'Database might not be migrated yet'
+        }, status=500)
+
 urlpatterns = [
     path('', home, name='home'),
+    path('health/', health_check, name='health'),
     path('admin/', admin.site.urls),
     path('api/', include('tracker.urls')),
 ]
