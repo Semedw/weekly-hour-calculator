@@ -55,6 +55,24 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onRegister }) => {
         </div>
 
         <form onSubmit={handleSubmit} className={styles.form}>
+          {isSignUp && (
+            <div style={{
+              backgroundColor: '#fef3c7',
+              border: '1px solid #fbbf24',
+              borderRadius: '8px',
+              padding: '0.75rem 1rem',
+              marginBottom: '1rem',
+              display: 'flex',
+              alignItems: 'start',
+              gap: '0.5rem'
+            }}>
+              <span style={{ fontSize: '1.2rem' }}>⚠️</span>
+              <div style={{ fontSize: '0.85rem', color: '#92400e', lineHeight: '1.4' }}>
+                <strong>Caution:</strong> Please DON'T use your Holberton emails and passwords for safety reasons.
+              </div>
+            </div>
+          )}
+          
           <div className={styles.inputGroup}>
             <label htmlFor="username">Username</label>
             <input
