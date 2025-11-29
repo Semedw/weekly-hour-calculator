@@ -59,10 +59,12 @@ def health_check(request):
 
 def serve_react_assets(request, path):
     """Serve React static assets"""
-    asset_path = settings.BASE_DIR.parent / 'dist' / path
-    if asset_path.exists():
-        return FileResponse(open(asset_path, 'rb'))
-    return HttpResponse(status=404)
+    import mimetypes
+    asset_path = settings.BASE_DIR.parent / 'dist' / 'assets' / path
+    if asset_path.exists() and asset_path.is_file():
+        content_type, _ = mimetypes.guess_type(str(asset_path))
+        return FileResponse(open(asset_path, 'rb'), content_type=content_type or 'application/octet-stream')
+    return HttpResponse('Asset not found', status=404)
 
 def serve_react(request, path=''):
     """Serve React app"""
