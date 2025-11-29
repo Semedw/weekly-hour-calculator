@@ -16,11 +16,11 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include, re_path
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.db import connection
-from django.views.generic import TemplateView
 from django.conf import settings
 from django.conf.urls.static import static
+import os
 
 def home(request):
     return JsonResponse({
@@ -56,6 +56,22 @@ def health_check(request):
             'message': 'Database might not be migrated yet'
         }, status=500)
 
+def serve_react(request, path=''):
+    """Serve React app"""
+    try:
+        index_path = settings.BASE_DIR.parent / 'dist' / 'index.html'
+        if index_path.exists():
+            with open(index_path, 'r') as f:
+                return HttpResponse(f.read(), content_type='text/html')
+        else:
+            return JsonResponse({
+                'error': 'Frontend not built yet',
+                'message': 'React app is being built. Please wait a few minutes.',
+                'status': 'building'
+            })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
 urlpatterns = [
     path('api-info/', home, name='api-info'),
     path('health/', health_check, name='health'),
@@ -63,11 +79,11 @@ urlpatterns = [
     path('api/', include('tracker.urls')),
 ]
 
-# Serve React app for all other routes
-urlpatterns += [
-    re_path(r'^.*$', TemplateView.as_view(template_name='index.html'), name='frontend'),
-]
-
-# Serve static files in development
-if settings.DEBUG:
+# Serve static files
+if not settings.DEBUG:
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+
+# Serve React app for all other routes (must be last)
+urlpatterns += [
+    re_path(r'^.*$', serve_react, name='frontend'),
+]
