@@ -5,46 +5,82 @@ import ProgressChart from './components/ProgressChart';
 import Auth from './components/Auth';
 import Header from './components/Header';
 import { DAYS_OF_WEEK, calculateDailyHours, DayData } from './utils/timeCalculations';
-import { 
-  getCurrentUser, 
-  setCurrentUser, 
-  saveUser, 
-  findUserByUsername,
-  logoutUser,
-  saveWeekData,
-  loadWeekData,
-  User
-} from './utils/userAuth';
+import { apiService } from './services/api';
 import styles from './App.module.css';
 
+interface LocalUser {
+  id: string;
+  username: string;
+  email: string;
+}
+
 function App() {
-  const [currentUser, setCurrentUserState] = useState<User | null>(getCurrentUser());
+  const [currentUser, setCurrentUserState] = useState<LocalUser | null>(() => {
+    // Load user from localStorage on initial render
+    const savedUser = localStorage.getItem('currentUser');
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
   const [weekData, setWeekData] = useState<DayData[]>(
     DAYS_OF_WEEK.map(day => ({
       day,
       sessions: [{ checkIn: '', checkOut: '' }],
     }))
   );
+  const [saveMessage, setSaveMessage] = useState('');
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  // Save user to localStorage whenever it changes
+  useEffect(() => {
+    if (currentUser) {
+      localStorage.setItem('currentUser', JSON.stringify(currentUser));
+      apiService.setUserId(Number(currentUser.id));
+    } else {
+      localStorage.removeItem('currentUser');
+    }
+  }, [currentUser]);
 
   // Load user's saved data when they log in
   useEffect(() => {
     if (currentUser) {
-      const savedData = loadWeekData(currentUser.id);
-      if (savedData) {
-        setWeekData(savedData);
-      }
+      loadWeekFromBackend();
     }
   }, [currentUser]);
 
-  // Auto-save week data whenever it changes
+  // Warn before leaving if there are unsaved changes
   useEffect(() => {
-    if (currentUser) {
-      saveWeekData(currentUser.id, weekData);
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+        return e.returnValue;
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
+  const loadWeekFromBackend = async () => {
+    if (!currentUser) return;
+    
+    try {
+      const weekRecord = await apiService.getCurrentWeek();
+      if (weekRecord.week_data && weekRecord.week_data.length > 0) {
+        setWeekData(weekRecord.week_data);
+        setHasUnsavedChanges(false);
+      }
+    } catch (error) {
+      console.error('Failed to load week data:', error);
     }
-  }, [weekData, currentUser]);
+  };
 
   const totalHours = useMemo(() => {
     return weekData.reduce((total, dayData) => {
+      // Exclude Saturday and Sunday from total hours calculation
+      if (dayData.day === 'Saturday' || dayData.day === 'Sunday') {
+        return total;
+      }
+      
       const dayTotal = dayData.sessions.reduce((sum, session) => {
         return sum + calculateDailyHours(session.checkIn, session.checkOut);
       }, 0);
@@ -65,6 +101,7 @@ function App() {
       newData[dayIndex] = { ...newData[dayIndex], sessions: newSessions };
       return newData;
     });
+    setHasUnsavedChanges(true);
   };
 
   const addSession = (dayIndex: number) => {
@@ -76,6 +113,7 @@ function App() {
       };
       return newData;
     });
+    setHasUnsavedChanges(true);
   };
 
   const removeSession = (dayIndex: number, sessionIndex: number) => {
@@ -85,31 +123,77 @@ function App() {
       newData[dayIndex] = { ...newData[dayIndex], sessions: newSessions };
       return newData;
     });
+    setHasUnsavedChanges(true);
   };
 
-  const handleLogin = (username: string, email: string) => {
-    let user = findUserByUsername(username);
-    
-    if (!user) {
-      // New user - sign up
-      user = saveUser(username, email);
+  const handleLogin = async (username: string, _email: string, password: string) => {
+    try {
+      const apiUser = await apiService.login(username, password);
+      const localUser: LocalUser = {
+        id: apiUser.id.toString(),
+        username: apiUser.username,
+        email: apiUser.email,
+      };
+      setCurrentUserState(localUser);
+    } catch (error) {
+      console.error('Login failed:', error);
+      alert('Login failed. Please check your username and password.');
     }
-    
-    setCurrentUser(user);
-    setCurrentUserState(user);
   };
 
-  const handleLogout = () => {
-    logoutUser();
-    setCurrentUserState(null);
-    setWeekData(DAYS_OF_WEEK.map(day => ({
-      day,
-      sessions: [{ checkIn: '', checkOut: '' }],
-    })));
+  const handleRegister = async (username: string, email: string, password: string) => {
+    try {
+      const apiUser = await apiService.register(username, email, password);
+      const localUser: LocalUser = {
+        id: apiUser.id.toString(),
+        username: apiUser.username,
+        email: apiUser.email,
+      };
+      setCurrentUserState(localUser);
+    } catch (error) {
+      console.error('Registration failed:', error);
+      alert('Registration failed. Username might already be taken.');
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await apiService.logout();
+      setCurrentUserState(null);
+      setWeekData(DAYS_OF_WEEK.map(day => ({
+        day,
+        sessions: [{ checkIn: '', checkOut: '' }],
+      })));
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
+
+  const handleSave = async () => {
+    if (currentUser) {
+      try {
+        setSaveMessage('Saving...');
+        await apiService.saveCurrentWeek(weekData);
+        
+        // Reload from backend to confirm
+        await loadWeekFromBackend();
+        
+        // Clear unsaved changes flag
+        setHasUnsavedChanges(false);
+        
+        // Show confirmation message
+        setSaveMessage('Saved successfully!');
+        setTimeout(() => setSaveMessage(''), 2000);
+      } catch (error) {
+        console.error('Save failed:', error);
+        setSaveMessage('Save failed!');
+        setTimeout(() => setSaveMessage(''), 2000);
+      }
+    }
   };
 
   if (!currentUser) {
-    return <Auth onLogin={handleLogin} />;
+    return <Auth onLogin={handleLogin} onRegister={handleRegister} />;
   }
 
   return (
@@ -120,7 +204,48 @@ function App() {
         <div className={styles.content}>
           <div className={styles.leftColumn}>
             <div className={styles.daysSection}>
-              <h2 className={styles.sectionTitle}>Daily Check-ins</h2>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h2 className={styles.sectionTitle}>Daily Check-ins</h2>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  {saveMessage && (
+                    <span style={{ 
+                      color: '#4CAF50', 
+                      fontWeight: '600',
+                      fontSize: '0.9rem',
+                      animation: 'fadeIn 0.3s ease'
+                    }}>
+                      {saveMessage}
+                    </span>
+                  )}
+                  <button 
+                    onClick={handleSave}
+                    style={{
+                      padding: '0.75rem 1.5rem',
+                      backgroundColor: '#4299e1',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '1rem',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#3182ce';
+                      e.currentTarget.style.transform = 'translateY(-1px)';
+                      e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = '#4299e1';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+                    }}
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
               <div className={styles.daysList}>
                 {weekData.map((dayData, index) => (
                   <DayRow

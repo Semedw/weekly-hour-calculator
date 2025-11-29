@@ -2,13 +2,16 @@ import React, { useState } from 'react';
 import styles from './Auth.module.css';
 
 interface AuthProps {
-  onLogin: (username: string, email: string) => void;
+  onLogin: (username: string, email: string, password: string) => void;
+  onRegister: (username: string, email: string, password: string) => void;
 }
 
-const Auth: React.FC<AuthProps> = ({ onLogin }) => {
+const Auth: React.FC<AuthProps> = ({ onLogin, onRegister }) => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -20,17 +23,31 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
       return;
     }
 
-    if (isSignUp && !email.trim()) {
-      setError('Email is required for sign up');
+    if (!email.trim()) {
+      setError('Email is required');
       return;
     }
 
-    if (isSignUp && !email.includes('@')) {
+    if (!email.includes('@')) {
       setError('Please enter a valid email');
       return;
     }
 
-    onLogin(username.trim(), email.trim());
+    if (!password.trim()) {
+      setError('Password is required');
+      return;
+    }
+
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+
+    if (isSignUp) {
+      onRegister(username.trim(), email.trim(), password.trim());
+    } else {
+      onLogin(username.trim(), email.trim(), password.trim());
+    }
   };
 
   return (
@@ -40,6 +57,9 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
           <h1 className={styles.title}>Weekly School Time Tracker</h1>
           <p className={styles.subtitle}>
             {isSignUp ? 'Create your account' : 'Welcome back!'}
+          </p>
+          <p className={styles.warning}>
+            ⚠️ Please DO NOT use your Holberton email and password for safety reasons
           </p>
         </div>
 
@@ -57,18 +77,43 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
             />
           </div>
 
-          {isSignUp && (
-            <div className={styles.inputGroup}>
-              <label htmlFor="email">Email</label>
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter your email"
-                className={styles.input}
-                autoComplete="email"
-              />
+          <div className={styles.inputGroup}>
+            <label htmlFor="email">Email</label>
+            <input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Enter your email"
+              className={styles.input}
+              autoComplete="email"
+            />
+          </div>
+
+          <div className={styles.inputGroup}>
+            <label htmlFor="password">Password</label>
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter your password (min 6 characters)"
+              className={styles.input}
+              autoComplete={isSignUp ? 'new-password' : 'current-password'}
+            />
+          </div>
+
+          {!isSignUp && (
+            <div className={styles.rememberMe}>
+              <label className={styles.checkboxLabel}>
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className={styles.checkbox}
+                />
+                <span>Remember me</span>
+              </label>
             </div>
           )}
 
@@ -84,6 +129,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
               onClick={() => {
                 setIsSignUp(!isSignUp);
                 setError('');
+                setPassword('');
               }}
               className={styles.toggleButton}
             >
