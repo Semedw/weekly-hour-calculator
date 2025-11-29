@@ -1,7 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
-const USE_LOCAL_STORAGE = !import.meta.env.VITE_API_URL || import.meta.env.VITE_USE_LOCAL_STORAGE === 'true';
-
-import { localStorageService } from './localStorageService';
+const API_BASE_URL = 'http://localhost:8000/api';
 
 export interface DayData {
   day: string;
@@ -50,10 +47,6 @@ class ApiService {
   }
 
   async register(username: string, email: string, password: string): Promise<User> {
-    if (USE_LOCAL_STORAGE) {
-      return localStorageService.register(username, email, password);
-    }
-
     const response = await fetch(`${API_BASE_URL}/register/`, {
       method: 'POST',
       headers: {
@@ -74,10 +67,6 @@ class ApiService {
   }
 
   async login(username: string, password: string): Promise<User> {
-    if (USE_LOCAL_STORAGE) {
-      return localStorageService.login(username, password);
-    }
-
     const response = await fetch(`${API_BASE_URL}/login/`, {
       method: 'POST',
       headers: {
@@ -98,10 +87,6 @@ class ApiService {
   }
 
   async logout(): Promise<void> {
-    if (USE_LOCAL_STORAGE) {
-      return localStorageService.logout();
-    }
-
     await fetch(`${API_BASE_URL}/logout/`, {
       method: 'POST',
       headers: {
@@ -113,10 +98,6 @@ class ApiService {
   }
 
   async getCurrentWeek(): Promise<WeekData> {
-    if (USE_LOCAL_STORAGE) {
-      return localStorageService.getCurrentWeek();
-    }
-
     if (!this.userId) {
       throw new Error('User not logged in');
     }
@@ -133,10 +114,6 @@ class ApiService {
   }
 
   async saveCurrentWeek(weekData: DayData[]): Promise<WeekData> {
-    if (USE_LOCAL_STORAGE) {
-      return localStorageService.saveCurrentWeek(weekData);
-    }
-
     if (!this.userId) {
       throw new Error('User not logged in');
     }
@@ -163,10 +140,6 @@ class ApiService {
   }
 
   async getWeekHistory(): Promise<WeekData[]> {
-    if (USE_LOCAL_STORAGE) {
-      return localStorageService.getWeekHistory();
-    }
-
     if (!this.userId) {
       throw new Error('User not logged in');
     }

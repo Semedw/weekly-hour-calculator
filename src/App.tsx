@@ -27,7 +27,6 @@ function App() {
     }))
   );
   const [saveMessage, setSaveMessage] = useState('');
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   // Save user to localStorage whenever it changes
   useEffect(() => {
@@ -46,20 +45,6 @@ function App() {
     }
   }, [currentUser]);
 
-  // Warn before leaving if there are unsaved changes
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (hasUnsavedChanges) {
-        e.preventDefault();
-        e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
-        return e.returnValue;
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [hasUnsavedChanges]);
-
   const loadWeekFromBackend = async () => {
     if (!currentUser) return;
     
@@ -67,7 +52,6 @@ function App() {
       const weekRecord = await apiService.getCurrentWeek();
       if (weekRecord.week_data && weekRecord.week_data.length > 0) {
         setWeekData(weekRecord.week_data);
-        setHasUnsavedChanges(false);
       }
     } catch (error) {
       console.error('Failed to load week data:', error);
@@ -101,7 +85,6 @@ function App() {
       newData[dayIndex] = { ...newData[dayIndex], sessions: newSessions };
       return newData;
     });
-    setHasUnsavedChanges(true);
   };
 
   const addSession = (dayIndex: number) => {
@@ -113,7 +96,6 @@ function App() {
       };
       return newData;
     });
-    setHasUnsavedChanges(true);
   };
 
   const removeSession = (dayIndex: number, sessionIndex: number) => {
@@ -123,7 +105,6 @@ function App() {
       newData[dayIndex] = { ...newData[dayIndex], sessions: newSessions };
       return newData;
     });
-    setHasUnsavedChanges(true);
   };
 
   const handleLogin = async (username: string, _email: string, password: string) => {
@@ -177,9 +158,6 @@ function App() {
         
         // Reload from backend to confirm
         await loadWeekFromBackend();
-        
-        // Clear unsaved changes flag
-        setHasUnsavedChanges(false);
         
         // Show confirmation message
         setSaveMessage('Saved successfully!');

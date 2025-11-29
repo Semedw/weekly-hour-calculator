@@ -11,7 +11,6 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onRegister }) => {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -23,23 +22,18 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onRegister }) => {
       return;
     }
 
-    if (!email.trim()) {
-      setError('Email is required');
-      return;
-    }
-
-    if (!email.includes('@')) {
-      setError('Please enter a valid email');
-      return;
-    }
-
     if (!password.trim()) {
       setError('Password is required');
       return;
     }
 
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+    if (isSignUp && !email.trim()) {
+      setError('Email is required for sign up');
+      return;
+    }
+
+    if (isSignUp && !email.includes('@')) {
+      setError('Please enter a valid email');
       return;
     }
 
@@ -58,9 +52,6 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onRegister }) => {
           <p className={styles.subtitle}>
             {isSignUp ? 'Create your account' : 'Welcome back!'}
           </p>
-          <p className={styles.warning}>
-            ⚠️ Please DO NOT use your Holberton email and password for safety reasons
-          </p>
         </div>
 
         <form onSubmit={handleSubmit} className={styles.form}>
@@ -77,18 +68,20 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onRegister }) => {
             />
           </div>
 
-          <div className={styles.inputGroup}>
-            <label htmlFor="email">Email</label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your email"
-              className={styles.input}
-              autoComplete="email"
-            />
-          </div>
+          {isSignUp && (
+            <div className={styles.inputGroup}>
+              <label htmlFor="email">Email</label>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter your email"
+                className={styles.input}
+                autoComplete="email"
+              />
+            </div>
+          )}
 
           <div className={styles.inputGroup}>
             <label htmlFor="password">Password</label>
@@ -97,25 +90,11 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onRegister }) => {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter your password (min 6 characters)"
+              placeholder="Enter your password"
               className={styles.input}
               autoComplete={isSignUp ? 'new-password' : 'current-password'}
             />
           </div>
-
-          {!isSignUp && (
-            <div className={styles.rememberMe}>
-              <label className={styles.checkboxLabel}>
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className={styles.checkbox}
-                />
-                <span>Remember me</span>
-              </label>
-            </div>
-          )}
 
           {error && <div className={styles.error}>{error}</div>}
 
