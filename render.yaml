@@ -4,7 +4,7 @@ services:
     name: weekly-hour-calculator
     runtime: python
     buildCommand: pip install -r backend/requirements.txt
-    startCommand: cd backend && python manage.py migrate && python manage.py create_default_superuser && gunicorn timetracker.wsgi --log-file -
+    startCommand: python backend/manage.py migrate && python backend/manage.py create_default_superuser && cd backend && gunicorn timetracker.wsgi --log-file -
     envVars:
       - key: DEBUG
         value: False

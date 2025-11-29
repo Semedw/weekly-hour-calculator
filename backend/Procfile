@@ -1,1 +1,1 @@
-web: cd backend && python manage.py migrate && gunicorn timetracker.wsgi --log-file -
+web: python backend/manage.py migrate && python backend/manage.py create_default_superuser && cd backend && gunicorn timetracker.wsgi --log-file -
