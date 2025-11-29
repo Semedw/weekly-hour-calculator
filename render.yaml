@@ -3,8 +3,13 @@ services:
   - type: web
     name: weekly-hour-calculator
     runtime: python
-    buildCommand: npm install && npm run build && pip install -r backend/requirements.txt
-    startCommand: python backend/manage.py collectstatic --noinput && python backend/manage.py migrate --noinput && python backend/manage.py create_default_superuser && cd backend && gunicorn timetracker.wsgi:application --bind 0.0.0.0:$PORT --log-file -
+    buildCommand: |
+      npm install
+      npm run build
+      pip install -r backend/requirements.txt
+      python backend/manage.py migrate --noinput
+      python backend/manage.py create_default_superuser
+    startCommand: python backend/manage.py collectstatic --noinput && cd backend && gunicorn timetracker.wsgi:application --bind 0.0.0.0:$PORT --log-file -
     envVars:
       - key: DEBUG
         value: False
