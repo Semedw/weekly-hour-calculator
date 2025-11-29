@@ -27,6 +27,7 @@ function App() {
     }))
   );
   const [saveMessage, setSaveMessage] = useState('');
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   // Save user to localStorage whenever it changes
   useEffect(() => {
@@ -45,6 +46,20 @@ function App() {
     }
   }, [currentUser]);
 
+  // Warn before leaving page with unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = ''; // Chrome requires returnValue to be set
+        return ''; // Some browsers display this message
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
   const loadWeekFromBackend = async () => {
     if (!currentUser) return;
     
@@ -53,6 +68,7 @@ function App() {
       if (weekRecord.week_data && weekRecord.week_data.length > 0) {
         setWeekData(weekRecord.week_data);
       }
+      setHasUnsavedChanges(false); // Mark as saved after loading
     } catch (error) {
       console.error('Failed to load week data:', error);
     }
@@ -85,6 +101,7 @@ function App() {
       newData[dayIndex] = { ...newData[dayIndex], sessions: newSessions };
       return newData;
     });
+    setHasUnsavedChanges(true);
   };
 
   const addSession = (dayIndex: number) => {
@@ -96,6 +113,7 @@ function App() {
       };
       return newData;
     });
+    setHasUnsavedChanges(true);
   };
 
   const removeSession = (dayIndex: number, sessionIndex: number) => {
@@ -105,6 +123,7 @@ function App() {
       newData[dayIndex] = { ...newData[dayIndex], sessions: newSessions };
       return newData;
     });
+    setHasUnsavedChanges(true);
   };
 
   const handleLogin = async (username: string, _email: string, password: string) => {
@@ -161,6 +180,7 @@ function App() {
         
         // Show confirmation message
         setSaveMessage('Saved successfully!');
+        setHasUnsavedChanges(false); // Mark as saved
         setTimeout(() => setSaveMessage(''), 2000);
       } catch (error) {
         console.error('Save failed:', error);
@@ -185,9 +205,18 @@ function App() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                 <h2 className={styles.sectionTitle}>Daily Check-ins</h2>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  {hasUnsavedChanges && !saveMessage && (
+                    <span style={{ 
+                      color: '#f59e0b', 
+                      fontWeight: '600',
+                      fontSize: '0.9rem',
+                    }}>
+                      Unsaved changes
+                    </span>
+                  )}
                   {saveMessage && (
                     <span style={{ 
-                      color: '#4CAF50', 
+                      color: saveMessage.includes('failed') ? '#ef4444' : '#4CAF50', 
                       fontWeight: '600',
                       fontSize: '0.9rem',
                       animation: 'fadeIn 0.3s ease'
@@ -197,27 +226,33 @@ function App() {
                   )}
                   <button 
                     onClick={handleSave}
+                    disabled={!hasUnsavedChanges && saveMessage !== 'Saving...'}
                     style={{
                       padding: '0.75rem 1.5rem',
-                      backgroundColor: '#4299e1',
+                      backgroundColor: hasUnsavedChanges ? '#4299e1' : '#94a3b8',
                       color: 'white',
                       border: 'none',
                       borderRadius: '8px',
                       fontSize: '1rem',
                       fontWeight: '600',
-                      cursor: 'pointer',
+                      cursor: hasUnsavedChanges ? 'pointer' : 'not-allowed',
                       transition: 'all 0.2s ease',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                      opacity: hasUnsavedChanges ? 1 : 0.6,
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#3182ce';
-                      e.currentTarget.style.transform = 'translateY(-1px)';
-                      e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)';
+                      if (hasUnsavedChanges) {
+                        e.currentTarget.style.backgroundColor = '#3182ce';
+                        e.currentTarget.style.transform = 'translateY(-1px)';
+                        e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)';
+                      }
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = '#4299e1';
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+                      if (hasUnsavedChanges) {
+                        e.currentTarget.style.backgroundColor = '#4299e1';
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+                      }
                     }}
                   >
                     Save
